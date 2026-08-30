@@ -1,4 +1,5 @@
 using Application.Appointments.CreateAppointment;
+using Application.Appointments.GetAppointments;
 using FluentValidation;
 using MediatR;
 using Infrastructure;
@@ -58,6 +59,17 @@ app.MapPost("/api/appointments", async (
     }
 
     return Results.Created($"/api/appointments/{result.Appointment!.Id}", result.Appointment);
+});
+
+
+app.MapGet("/api/appointments", async (
+    [FromServices] IMediator mediator,
+    CancellationToken cancellationToken,
+    DateTimeOffset? from = null,
+    DateTimeOffset? to = null) =>
+{
+    var result = await mediator.Send(new GetAppointmentsQuery(from, to), cancellationToken);
+    return Results.Ok(result);
 });
 
 app.Run();
