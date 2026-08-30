@@ -1,5 +1,6 @@
 using Application.Appointments.CreateAppointment;
 using Application.Appointments.GetAppointments;
+using Application.Appointments.UpdateAppointment;
 using FluentValidation;
 using MediatR;
 using Infrastructure;
@@ -70,6 +71,43 @@ app.MapGet("/api/appointments", async (
 {
     var result = await mediator.Send(new GetAppointmentsQuery(from, to), cancellationToken);
     return Results.Ok(result);
+});
+
+app.MapPut("/api/appointments/{id:guid}", async (
+    Guid id,
+    UpdateAppointmentCommand command,
+    [FromServices] IValidator<UpdateAppointmentCommand> validator,
+    [FromServices] IMediator mediator,
+    CancellationToken cancellationToken) =>
+{
+    if (id != command.Id)
+    {
+        return Results.BadRequest(new { message = "Route id and body id must match." });
+    }
+
+    var validationResult = await validator.ValidateAsync(command, cancellationToken);
+    if (!validationResult.IsValid)
+    {
+        return Results.ValidationProblem(validationResult.ToDictionary());
+    }
+
+    var result = await mediator.Send(command, cancellationToken);
+
+    if (result.NotFound)
+    {
+        return Results.NotFound();
+    }
+
+    if (!result.Success)
+    {
+        return Results.Conflict(new
+        {
+            message = "The proposed time conflicts with existing appointment(s).",
+            conflicts = result.Conflicts.Select(c => new { c.Id, c.CustomerName, c.Start, c.End })
+        });
+    }
+
+    return Results.Ok(result.Appointment);
 });
 
 app.Run();

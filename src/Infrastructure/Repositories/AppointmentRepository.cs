@@ -9,6 +9,9 @@ public class AppointmentRepository(AppointmentsDbContext dbContext) : IAppointme
     public async Task<List<Appointment>> GetAllAsync(CancellationToken cancellationToken)
         => await dbContext.Appointments.ToListAsync(cancellationToken);
 
+    public async Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+        => await dbContext.Appointments.FindAsync(new object?[] { id }, cancellationToken);
+        
     public async Task AddAsync(Appointment appointment, CancellationToken cancellationToken)
         => await dbContext.Appointments.AddAsync(appointment, cancellationToken);
 
