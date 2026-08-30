@@ -1,3 +1,5 @@
+using Domain.ValueObjects;
+
 namespace Domain.Entities;
 
 public class Appointment
@@ -10,4 +12,6 @@ public class Appointment
     public DateTimeOffset End { get; set; }
     public string? Notes { get; set; }
     public string? ExternalId { get; set; }
+
+    public TimeRange ToTimeRange() => new(Start, End);
 }
