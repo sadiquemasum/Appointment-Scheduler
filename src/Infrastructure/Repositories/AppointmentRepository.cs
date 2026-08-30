@@ -11,10 +11,13 @@ public class AppointmentRepository(AppointmentsDbContext dbContext) : IAppointme
 
     public async Task<Appointment?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => await dbContext.Appointments.FindAsync(new object?[] { id }, cancellationToken);
-        
+
     public async Task AddAsync(Appointment appointment, CancellationToken cancellationToken)
         => await dbContext.Appointments.AddAsync(appointment, cancellationToken);
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
         => await dbContext.SaveChangesAsync(cancellationToken);
+
+    public void Remove(Appointment appointment)
+    => dbContext.Appointments.Remove(appointment);
 }

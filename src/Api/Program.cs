@@ -1,6 +1,7 @@
 using Application.Appointments.CreateAppointment;
 using Application.Appointments.GetAppointments;
 using Application.Appointments.UpdateAppointment;
+using Application.Appointments.DeleteAppointment;
 using FluentValidation;
 using MediatR;
 using Infrastructure;
@@ -108,6 +109,15 @@ app.MapPut("/api/appointments/{id:guid}", async (
     }
 
     return Results.Ok(result.Appointment);
+});
+
+app.MapDelete("/api/appointments/{id:guid}", async (
+    Guid id,
+    [FromServices] IMediator mediator,
+    CancellationToken cancellationToken) =>
+{
+    var deleted = await mediator.Send(new DeleteAppointmentCommand(id), cancellationToken);
+    return deleted ? Results.NoContent() : Results.NotFound();
 });
 
 app.Run();
