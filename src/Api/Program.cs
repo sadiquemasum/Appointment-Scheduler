@@ -12,6 +12,9 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<Application.Common.IAppointmentRepository, Infrastructure.Repositories.AppointmentRepository>();
+builder.Services.AddSingleton<Domain.Services.ConflictChecker>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
