@@ -2,6 +2,7 @@ using Application.Appointments.CreateAppointment;
 using Application.Appointments.GetAppointments;
 using Application.Appointments.UpdateAppointment;
 using Application.Appointments.DeleteAppointment;
+using Application.Appointments.CheckConflict;
 using Application.Appointments.ImportAppointments;
 using Application.Common;
 using FluentValidation;
@@ -148,6 +149,17 @@ app.MapPost("/api/appointments/import", async (
     CancellationToken cancellationToken) =>
 {
     var result = await mediator.Send(new ImportAppointmentsCommand(), cancellationToken);
+    return Results.Ok(result);
+});
+
+app.MapGet("/api/appointments/check-conflict", async (
+    [FromServices] IMediator mediator,
+    CancellationToken cancellationToken,
+    DateTimeOffset start,
+    DateTimeOffset end,
+    Guid? excludeId = null) =>
+{
+    var result = await mediator.Send(new CheckConflictQuery(start, end, excludeId), cancellationToken);
     return Results.Ok(result);
 });
 
