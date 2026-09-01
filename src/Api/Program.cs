@@ -2,9 +2,12 @@ using Application.Appointments.CreateAppointment;
 using Application.Appointments.GetAppointments;
 using Application.Appointments.UpdateAppointment;
 using Application.Appointments.DeleteAppointment;
+using Application.Appointments.ImportAppointments;
+using Application.Common;
 using FluentValidation;
 using MediatR;
 using Infrastructure;
+using Infrastructure.ExternalServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +29,11 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Application.Appointments.CreateAppointment.CreateAppointmentCommand).Assembly));
 
 builder.Services.AddValidatorsFromAssembly(typeof(CreateAppointmentCommandValidator).Assembly);
+
+builder.Services.AddHttpClient<IExternalCalendarClient, ExternalCalendarClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ExternalCalendarApi:BaseUrl"] ?? "http://localhost:5004");
+});
 
 var app = builder.Build();
 
@@ -118,6 +126,29 @@ app.MapDelete("/api/appointments/{id:guid}", async (
 {
     var deleted = await mediator.Send(new DeleteAppointmentCommand(id), cancellationToken);
     return deleted ? Results.NoContent() : Results.NotFound();
+});
+
+app.MapGet("/api/external/events", () =>
+{
+    // Simulates a third-party calendar system (stand-in for the
+    // assignment's "simple test API" option). One event deliberately
+    // overlaps Jane Doe's existing appointment to exercise the
+    // conflict-skip path during import.
+    var events = new[]
+    {
+        new { id = "ext-001", summary = "Consultation - Karin Berg", start = DateTimeOffset.Parse("2026-09-03T09:00:00+02:00"), end = DateTimeOffset.Parse("2026-09-03T09:30:00+02:00") },
+        new { id = "ext-002", summary = "Support call - Oscar Nilsson", start = DateTimeOffset.Parse("2026-09-03T11:00:00+02:00"), end = DateTimeOffset.Parse("2026-09-03T11:30:00+02:00") },
+        new { id = "ext-003", summary = "Follow-up - Jane Doe", start = DateTimeOffset.Parse("2026-09-01T10:00:00+02:00"), end = DateTimeOffset.Parse("2026-09-01T10:30:00+02:00") }
+    };
+    return Results.Ok(events);
+});
+
+app.MapPost("/api/appointments/import", async (
+    [FromServices] IMediator mediator,
+    CancellationToken cancellationToken) =>
+{
+    var result = await mediator.Send(new ImportAppointmentsCommand(), cancellationToken);
+    return Results.Ok(result);
 });
 
 app.Run();
