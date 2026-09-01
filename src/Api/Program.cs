@@ -164,3 +164,5 @@ app.MapGet("/api/appointments/check-conflict", async (
 });
 
 app.Run();
+
+public partial class Program { }
