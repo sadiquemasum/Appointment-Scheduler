@@ -146,30 +146,30 @@ function onCancel() {
 
     <div class="field">
       <label for="customerName">Customer Name *</label>
-      <input id="customerName" v-model="customerName" v-bind="customerNameAttrs" type="text" />
+      <input id="customerName" v-model="customerName" v-bind="customerNameAttrs" type="text" :disabled="isPending" />
       <span class="error" v-if="errors.customerName">{{ errors.customerName }}</span>
     </div>
 
     <div class="field">
       <label for="customerPhone">Phone</label>
-      <input id="customerPhone" v-model="customerPhone" v-bind="customerPhoneAttrs" type="text" />
+      <input id="customerPhone" v-model="customerPhone" v-bind="customerPhoneAttrs" type="text" :disabled="isPending" />
     </div>
 
     <div class="field">
       <label for="customerEmail">Email</label>
-      <input id="customerEmail" v-model="customerEmail" v-bind="customerEmailAttrs" type="email" />
+      <input id="customerEmail" v-model="customerEmail" v-bind="customerEmailAttrs" type="email" :disabled="isPending" />
       <span class="error" v-if="errors.customerEmail">{{ errors.customerEmail }}</span>
     </div>
 
     <div class="field">
       <label for="start">Start *</label>
-      <input id="start" v-model="start" v-bind="startAttrs" type="datetime-local" />
+      <input id="start" v-model="start" v-bind="startAttrs" type="datetime-local" :disabled="isPending" />
       <span class="error" v-if="errors.start">{{ errors.start }}</span>
     </div>
 
     <div class="field">
       <label for="end">End *</label>
-      <input id="end" v-model="end" v-bind="endAttrs" type="datetime-local" />
+      <input id="end" v-model="end" v-bind="endAttrs" type="datetime-local" :disabled="isPending" />
       <span class="error" v-if="errors.end">{{ errors.end }}</span>
     </div>
 
@@ -177,7 +177,7 @@ function onCancel() {
 
     <div class="field">
       <label for="notes">Notes</label>
-      <textarea id="notes" v-model="notes" v-bind="notesAttrs"></textarea>
+      <textarea id="notes" v-model="notes" v-bind="notesAttrs" :disabled="isPending"></textarea>
     </div>
 
     <p class="submit-error" v-if="submitError">{{ submitError }}</p>
