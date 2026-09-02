@@ -24,9 +24,9 @@ function onImport() {
 
     <div v-if="mutation.isSuccess.value" class="import-result">
       <p>
-        Imported: {{ mutation.data.value!.imported }} —
-        Skipped (duplicate): {{ mutation.data.value!.skippedDuplicate }} —
-        Skipped (conflict): {{ mutation.data.value!.skippedConflict }}
+        Imported: {{ mutation.data.value!.imported }} — Skipped (duplicate):
+        {{ mutation.data.value!.skippedDuplicate }} — Skipped (conflict):
+        {{ mutation.data.value!.skippedConflict }}
       </p>
       <ul v-if="mutation.data.value!.conflictDetails.length > 0">
         <li v-for="(detail, i) in mutation.data.value!.conflictDetails" :key="i">
@@ -35,9 +35,7 @@ function onImport() {
       </ul>
     </div>
 
-    <p v-if="mutation.isError.value" class="submit-error">
-      Import failed. Please try again.
-    </p>
+    <p v-if="mutation.isError.value" class="submit-error">Import failed. Please try again.</p>
   </div>
 </template>
 

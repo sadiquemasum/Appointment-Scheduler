@@ -23,18 +23,18 @@ describe('AppointmentForm', () => {
     vi.clearAllMocks();
   });
 
-it('shows validation error when name is empty', async () => {
-  renderForm();
+  it('shows validation error when name is empty', async () => {
+    renderForm();
 
-  const submitButton = screen.getByRole('button', { name: /create appointment/i });
-  await fireEvent.click(submitButton);
+    const submitButton = screen.getByRole('button', { name: /create appointment/i });
+    await fireEvent.click(submitButton);
 
-  await waitFor(() => {
-    const nameInput = screen.getByLabelText(/customer name/i);
-    const fieldContainer = nameInput.closest('.field');
-    expect(fieldContainer?.querySelector('.error')).toHaveTextContent(/required/i);
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText(/customer name/i);
+      const fieldContainer = nameInput.closest('.field');
+      expect(fieldContainer?.querySelector('.error')).toHaveTextContent(/required/i);
+    });
   });
-});
 
   it('shows conflict warning when checkConflict returns true', async () => {
     vi.mocked(appointmentsApi.checkConflict).mockResolvedValue({
@@ -62,5 +62,35 @@ it('shows validation error when name is empty', async () => {
     });
 
     expect(appointmentsApi.checkConflict).toHaveBeenCalled();
+  });
+
+  it('pre-fills fields and shows Edit Appointment heading when appointment prop is provided', async () => {
+    const existingAppointment = {
+      id: 'existing-id',
+      customerName: 'Erik Svensson',
+      customerPhone: '+46709876543',
+      customerEmail: 'erik@example.com',
+      start: '2026-09-02T15:00:00+02:00',
+      end: '2026-09-02T15:30:00+02:00',
+      notes: 'Rescheduled',
+      externalId: null,
+    };
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(AppointmentForm, {
+      props: { appointment: existingAppointment },
+      global: {
+        plugins: [[VueQueryPlugin, { queryClient }]],
+      },
+    });
+
+    expect(screen.getByText(/edit appointment/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/customer name/i)).toHaveValue('Erik Svensson');
+    expect(screen.getByLabelText(/phone/i)).toHaveValue('+46709876543');
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
   });
 });

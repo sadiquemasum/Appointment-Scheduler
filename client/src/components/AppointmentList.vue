@@ -11,7 +11,9 @@ const queryClient = useQueryClient();
 const fromDate = ref<string>('');
 const toDate = ref<string>('');
 
-const fromIso = computed(() => (fromDate.value ? new Date(fromDate.value).toISOString() : undefined));
+const fromIso = computed(() =>
+  fromDate.value ? new Date(fromDate.value).toISOString() : undefined
+);
 const toIso = computed(() => {
   if (!toDate.value) return undefined;
   // Treat the "To" date as inclusive of the entire day, not just
@@ -22,7 +24,12 @@ const toIso = computed(() => {
   return endOfDay.toISOString();
 });
 
-const { data: appointments, isLoading, isError, error } = useQuery({
+const {
+  data: appointments,
+  isLoading,
+  isError,
+  error,
+} = useQuery({
   queryKey: ['appointments', fromIso, toIso],
   queryFn: () => getAppointments(fromIso.value, toIso.value),
 });
@@ -72,36 +79,39 @@ function clearFilters() {
     <p v-else-if="isError">Failed to load appointments: {{ (error as Error)?.message }}</p>
 
     <ul v-else-if="appointments && appointments.length > 0" class="appointment-list">
-<li v-for="appointment in appointments" :key="appointment.id">
-  <div class="details">
-    <div class="detail-row">
-      <span class="label">Name:</span>
-      <strong>{{ appointment.customerName }}</strong>
-    </div>
-    <div class="detail-row">
-      <span class="label">Booked:</span>
-      <span>{{ new Date(appointment.start).toLocaleString() }} – {{ new Date(appointment.end).toLocaleTimeString() }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="label">Phone:</span>
-      <span>{{ appointment.customerPhone || '—' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="label">Email:</span>
-      <span>{{ appointment.customerEmail || '—' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="label">Notes:</span>
-      <span>{{ appointment.notes || '—' }}</span>
-    </div>
-  </div>
-  <div class="actions">
-    <button @click="emit('edit', appointment)">Edit</button>
-    <button @click="onDelete(appointment)" :disabled="deleteMutation.isPending.value">
-      Delete
-    </button>
-  </div>
-</li>
+      <li v-for="appointment in appointments" :key="appointment.id">
+        <div class="details">
+          <div class="detail-row">
+            <span class="label">Name:</span>
+            <strong>{{ appointment.customerName }}</strong>
+          </div>
+          <div class="detail-row">
+            <span class="label">Booked:</span>
+            <span
+              >{{ new Date(appointment.start).toLocaleString() }} –
+              {{ new Date(appointment.end).toLocaleTimeString() }}</span
+            >
+          </div>
+          <div class="detail-row">
+            <span class="label">Phone:</span>
+            <span>{{ appointment.customerPhone || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Email:</span>
+            <span>{{ appointment.customerEmail || '—' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Notes:</span>
+            <span>{{ appointment.notes || '—' }}</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button @click="emit('edit', appointment)">Edit</button>
+          <button @click="onDelete(appointment)" :disabled="deleteMutation.isPending.value">
+            Delete
+          </button>
+        </div>
+      </li>
     </ul>
 
     <p v-else>No appointments in this range.</p>

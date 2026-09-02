@@ -20,19 +20,20 @@ function toLocalDateTimeInput(isoString: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-const { handleSubmit, defineField, errors, resetForm, values, setValues } = useForm<CreateAppointmentFormValues>({
-  validationSchema: toTypedSchema(createAppointmentSchema),
-  initialValues: props.appointment
-    ? {
-        customerName: props.appointment.customerName,
-        customerPhone: props.appointment.customerPhone ?? '',
-        customerEmail: props.appointment.customerEmail ?? '',
-        start: toLocalDateTimeInput(props.appointment.start),
-        end: toLocalDateTimeInput(props.appointment.end),
-        notes: props.appointment.notes ?? '',
-      }
-    : undefined,
-});
+const { handleSubmit, defineField, errors, resetForm, values, setValues } =
+  useForm<CreateAppointmentFormValues>({
+    validationSchema: toTypedSchema(createAppointmentSchema),
+    initialValues: props.appointment
+      ? {
+          customerName: props.appointment.customerName,
+          customerPhone: props.appointment.customerPhone ?? '',
+          customerEmail: props.appointment.customerEmail ?? '',
+          start: toLocalDateTimeInput(props.appointment.start),
+          end: toLocalDateTimeInput(props.appointment.end),
+          notes: props.appointment.notes ?? '',
+        }
+      : undefined,
+  });
 
 // If the prop changes (user clicks Edit on a different appointment while
 // this form is already mounted), re-populate the form.
@@ -146,24 +147,48 @@ function onCancel() {
 
     <div class="field">
       <label for="customerName">Customer Name *</label>
-      <input id="customerName" v-model="customerName" v-bind="customerNameAttrs" type="text" :disabled="isPending" />
+      <input
+        id="customerName"
+        v-model="customerName"
+        v-bind="customerNameAttrs"
+        type="text"
+        :disabled="isPending"
+      />
       <span class="error" v-if="errors.customerName">{{ errors.customerName }}</span>
     </div>
 
     <div class="field">
       <label for="customerPhone">Phone</label>
-      <input id="customerPhone" v-model="customerPhone" v-bind="customerPhoneAttrs" type="text" :disabled="isPending" />
+      <input
+        id="customerPhone"
+        v-model="customerPhone"
+        v-bind="customerPhoneAttrs"
+        type="text"
+        :disabled="isPending"
+      />
     </div>
 
     <div class="field">
       <label for="customerEmail">Email</label>
-      <input id="customerEmail" v-model="customerEmail" v-bind="customerEmailAttrs" type="email" :disabled="isPending" />
+      <input
+        id="customerEmail"
+        v-model="customerEmail"
+        v-bind="customerEmailAttrs"
+        type="email"
+        :disabled="isPending"
+      />
       <span class="error" v-if="errors.customerEmail">{{ errors.customerEmail }}</span>
     </div>
 
     <div class="field">
       <label for="start">Start *</label>
-      <input id="start" v-model="start" v-bind="startAttrs" type="datetime-local" :disabled="isPending" />
+      <input
+        id="start"
+        v-model="start"
+        v-bind="startAttrs"
+        type="datetime-local"
+        :disabled="isPending"
+      />
       <span class="error" v-if="errors.start">{{ errors.start }}</span>
     </div>
 

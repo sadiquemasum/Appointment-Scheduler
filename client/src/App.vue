@@ -25,7 +25,11 @@ function onCancelled() {
     <h1>Telenor Appointment Scheduler</h1>
     <div class="layout">
       <section class="workspace">
-        <AppointmentForm :appointment="editingAppointment" @saved="onSaved" @cancelled="onCancelled" />
+        <AppointmentForm
+          :appointment="editingAppointment"
+          @saved="onSaved"
+          @cancelled="onCancelled"
+        />
         <ImportButton />
       </section>
       <section class="records">
@@ -55,7 +59,8 @@ main {
   }
 }
 
-.workspace, .records {
+.workspace,
+.records {
   display: flex;
   flex-direction: column;
   gap: 20px;
