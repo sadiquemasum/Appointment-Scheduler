@@ -22,7 +22,7 @@ function onCancelled() {
 
 <template>
   <main>
-    <h1>Telenor Appointment Scheduler</h1>
+    <h1>Appointment Scheduler</h1>
     <div class="layout">
       <section class="workspace">
         <AppointmentForm
