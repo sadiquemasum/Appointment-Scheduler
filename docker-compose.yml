@@ -1,0 +1,46 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/Api/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - api-data:/app/data
+    environment:
+      ConnectionStrings__DefaultConnection: "Data Source=/app/data/appointments.db"
+      ExternalCalendarApi__BaseUrl: "http://localhost:8080"
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+
+  # Postgres, commented out for now - flip this on once the Npgsql
+  # provider swap is done. See README "Database Strategy" for the
+  # documented plan (UseNpgsql swap, EXCLUDE USING gist as an optional
+  # enhancement).
+  #
+  # postgres:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_DB: telenor_appointments
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  api-data:
+  # postgres-data:
