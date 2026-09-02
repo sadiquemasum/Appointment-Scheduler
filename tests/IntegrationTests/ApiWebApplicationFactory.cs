@@ -1,4 +1,6 @@
+using Application.Common;
 using Infrastructure;
+using Infrastructure.ExternalServices;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -32,6 +34,14 @@ public class ApiWebApplicationFactory : WebApplicationFactory<Program>
             using var scope = services.BuildServiceProvider().CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppointmentsDbContext>();
             db.Database.EnsureCreated();
+
+            // The mock external calendar endpoint lives inside this same app,
+            // but WebApplicationFactory runs entirely in-memory with no real
+            // socket listener. Redirect the external client's HttpClient to
+            // use the TestServer's in-memory handler instead of a real
+            // network connection.
+            services.AddHttpClient<IExternalCalendarClient, ExternalCalendarClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler());
         });
     }
 
