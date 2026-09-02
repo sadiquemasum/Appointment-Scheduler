@@ -23,8 +23,41 @@ function onCancelled() {
 <template>
   <main>
     <h1>Telenor Appointment Scheduler</h1>
-    <AppointmentForm :appointment="editingAppointment" @saved="onSaved" @cancelled="onCancelled" />
-    <ImportButton />
-    <AppointmentList @edit="onEdit" />
+    <div class="layout">
+      <section class="workspace">
+        <AppointmentForm :appointment="editingAppointment" @saved="onSaved" @cancelled="onCancelled" />
+        <ImportButton />
+      </section>
+      <section class="records">
+        <AppointmentList @edit="onEdit" />
+      </section>
+    </div>
   </main>
 </template>
+
+<style scoped>
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: 380px 1fr;
+    align-items: start;
+  }
+}
+
+.workspace, .records {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+</style>

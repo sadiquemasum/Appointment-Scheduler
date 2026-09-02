@@ -40,3 +40,33 @@ function onImport() {
     </p>
   </div>
 </template>
+
+<style scoped>
+.import-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.import-result {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.import-result ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.submit-error {
+  background: var(--danger-bg);
+  color: var(--danger);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin: 0;
+}
+</style>
