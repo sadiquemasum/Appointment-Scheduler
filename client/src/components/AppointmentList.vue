@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useQuery } from '@tanstack/vue-query';
 import { getAppointments } from '../api/appointments';
+import type { Appointment } from '../types/appointment';
+
+const emit = defineEmits<{ edit: [appointment: Appointment] }>();
 
 const { data: appointments, isLoading, isError, error } = useQuery({
   queryKey: ['appointments'],
@@ -20,6 +23,7 @@ const { data: appointments, isLoading, isError, error } = useQuery({
         <strong>{{ appointment.customerName }}</strong> —
         {{ new Date(appointment.start).toLocaleString() }} to
         {{ new Date(appointment.end).toLocaleTimeString() }}
+        <button @click="emit('edit', appointment)">Edit</button>
       </li>
     </ul>
 

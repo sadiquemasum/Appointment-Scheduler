@@ -28,3 +28,12 @@ export async function checkConflict(
   });
   return response.data;
 }
+
+export interface UpdateAppointmentPayload extends CreateAppointmentPayload {
+  id: string;
+}
+
+export async function updateAppointment(payload: UpdateAppointmentPayload): Promise<Appointment> {
+  const response = await apiClient.put<Appointment>(`/api/appointments/${payload.id}`, payload);
+  return response.data;
+}

@@ -1,18 +1,56 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useForm } from 'vee-validate';
 import { toTypedSchema } from '@vee-validate/zod';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
-import { createAppointment, checkConflict } from '../api/appointments';
+import { createAppointment, updateAppointment, checkConflict } from '../api/appointments';
 import { createAppointmentSchema, type CreateAppointmentFormValues } from '../schemas/appointment';
+import type { Appointment } from '../types/appointment';
 
-const emit = defineEmits<{ created: [] }>();
+const props = defineProps<{ appointment?: Appointment | null }>();
+const emit = defineEmits<{ saved: []; cancelled: [] }>();
+
+const isEditMode = computed(() => !!props.appointment);
 
 const queryClient = useQueryClient();
 
-const { handleSubmit, defineField, errors, resetForm, values } = useForm<CreateAppointmentFormValues>({
+function toLocalDateTimeInput(isoString: string): string {
+  const date = new Date(isoString);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+const { handleSubmit, defineField, errors, resetForm, values, setValues } = useForm<CreateAppointmentFormValues>({
   validationSchema: toTypedSchema(createAppointmentSchema),
+  initialValues: props.appointment
+    ? {
+        customerName: props.appointment.customerName,
+        customerPhone: props.appointment.customerPhone ?? '',
+        customerEmail: props.appointment.customerEmail ?? '',
+        start: toLocalDateTimeInput(props.appointment.start),
+        end: toLocalDateTimeInput(props.appointment.end),
+        notes: props.appointment.notes ?? '',
+      }
+    : undefined,
 });
+
+// If the prop changes (user clicks Edit on a different appointment while
+// this form is already mounted), re-populate the form.
+watch(
+  () => props.appointment,
+  (newAppointment) => {
+    if (newAppointment) {
+      setValues({
+        customerName: newAppointment.customerName,
+        customerPhone: newAppointment.customerPhone ?? '',
+        customerEmail: newAppointment.customerEmail ?? '',
+        start: toLocalDateTimeInput(newAppointment.start),
+        end: toLocalDateTimeInput(newAppointment.end),
+        notes: newAppointment.notes ?? '',
+      });
+    }
+  }
+);
 
 const [customerName, customerNameAttrs] = defineField('customerName');
 const [customerPhone, customerPhoneAttrs] = defineField('customerPhone');
@@ -24,7 +62,6 @@ const [notes, notesAttrs] = defineField('notes');
 const conflictWarning = ref<string | null>(null);
 const submitError = ref<string | null>(null);
 
-// Live conflict check as the user picks start/end times, before they submit
 watch([() => values.start, () => values.end], async ([newStart, newEnd]) => {
   conflictWarning.value = null;
   if (!newStart || !newEnd) return;
@@ -33,51 +70,79 @@ watch([() => values.start, () => values.end], async ([newStart, newEnd]) => {
   try {
     const result = await checkConflict(
       new Date(newStart).toISOString(),
-      new Date(newEnd).toISOString()
+      new Date(newEnd).toISOString(),
+      props.appointment?.id
     );
     if (result.hasConflict) {
       const conflict = result.conflicts[0];
       conflictWarning.value = `Conflicts with ${conflict.customerName}'s appointment at ${new Date(conflict.start).toLocaleTimeString()}`;
     }
   } catch {
-    // Silently ignore - this is just a live hint, not a hard validation gate
+    // Live hint only - ignore failures here
   }
 });
 
-const mutation = useMutation({
+const createMutation = useMutation({
   mutationFn: createAppointment,
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['appointments'] });
     resetForm();
     submitError.value = null;
-    emit('created');
+    emit('saved');
   },
-  onError: (error: any) => {
-    if (error.response?.status === 409) {
-      const conflicts = error.response.data.conflicts;
-      submitError.value = `Time conflict: overlaps with ${conflicts[0]?.customerName}'s appointment.`;
-    } else {
-      submitError.value = 'Failed to create appointment. Please try again.';
-    }
-  },
+  onError: handleMutationError,
 });
+
+const updateMutation = useMutation({
+  mutationFn: updateAppointment,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    submitError.value = null;
+    emit('saved');
+  },
+  onError: handleMutationError,
+});
+
+function handleMutationError(error: any) {
+  if (error.response?.status === 409) {
+    const conflicts = error.response.data.conflicts;
+    submitError.value = `Time conflict: overlaps with ${conflicts[0]?.customerName}'s appointment.`;
+  } else if (error.response?.status === 404) {
+    submitError.value = 'This appointment no longer exists. It may have been deleted.';
+  } else {
+    submitError.value = 'Failed to save appointment. Please try again.';
+  }
+}
+
+const isPending = computed(() => createMutation.isPending.value || updateMutation.isPending.value);
 
 const onSubmit = handleSubmit((formValues) => {
   submitError.value = null;
-  mutation.mutate({
+  const payload = {
     customerName: formValues.customerName,
     customerPhone: formValues.customerPhone || null,
     customerEmail: formValues.customerEmail || null,
     start: new Date(formValues.start).toISOString(),
     end: new Date(formValues.end).toISOString(),
     notes: formValues.notes || null,
-  });
+  };
+
+  if (isEditMode.value && props.appointment) {
+    updateMutation.mutate({ id: props.appointment.id, ...payload });
+  } else {
+    createMutation.mutate(payload);
+  }
 });
+
+function onCancel() {
+  resetForm();
+  emit('cancelled');
+}
 </script>
 
 <template>
   <form @submit="onSubmit" class="appointment-form">
-    <h2>New Appointment</h2>
+    <h2>{{ isEditMode ? 'Edit Appointment' : 'New Appointment' }}</h2>
 
     <div class="field">
       <label for="customerName">Customer Name *</label>
@@ -117,8 +182,11 @@ const onSubmit = handleSubmit((formValues) => {
 
     <p class="submit-error" v-if="submitError">{{ submitError }}</p>
 
-    <button type="submit" :disabled="mutation.isPending.value">
-      {{ mutation.isPending.value ? 'Creating...' : 'Create Appointment' }}
-    </button>
+    <div class="form-actions">
+      <button type="submit" :disabled="isPending">
+        {{ isPending ? 'Saving...' : isEditMode ? 'Save Changes' : 'Create Appointment' }}
+      </button>
+      <button v-if="isEditMode" type="button" @click="onCancel">Cancel</button>
+    </div>
   </form>
 </template>
