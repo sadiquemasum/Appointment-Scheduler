@@ -5,3 +5,5 @@ obj/
 .vscode/
 node_modules/
 dist/
+*.db-shm
+*.db-wal
