@@ -103,9 +103,9 @@ The following are explicitly out of scope for this submission but are noted here
 
 ## Testing
 
-**56 automated tests** across two projects:
+**58 automated tests** across two projects:
 
-- **Unit tests (35)** — `Domain` logic (`TimeRange`, `ConflictChecker`, including the back-to-back boundary case and invalid-range guard), every command/query handler (with `IAppointmentRepository` mocked via Moq), and FluentValidation validator rules (required fields, max length, invalid email, end-before-start).
+- **Unit tests (37)** — `Domain` logic (`TimeRange`, `ConflictChecker`, including the back-to-back boundary case and invalid-range guard), every command/query handler (with `IAppointmentRepository` mocked via Moq), and FluentValidation validator rules (required fields, max length, invalid email, end-before-start).
 - **Integration tests (21)** — full HTTP round-trips via `WebApplicationFactory`, using a real (but in-memory) SQLite database that's freshly created per test run. Covers every endpoint's happy path plus its documented error paths (404, 409, 400), including import idempotency and conflict-skip behavior over real HTTP, and direct `AppointmentRepository` tests against a real `DbContext`.
 
 Run all tests:
