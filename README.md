@@ -1,9 +1,10 @@
-# Telenor Appointments Scheduling System
+# Appointments Scheduling System
 
 A single-page application that lets a Telenor service agent schedule, manage, and import customer appointments, with automatic conflict detection.
 
 ## Tech Stack
 
+**Backend**
 - **.NET 8** (ASP.NET Core Minimal API)
 - **C# 12** (nullable reference types enabled, primary constructors, records)
 - **SQLite** for local development, with a documented path to **PostgreSQL** for production (see "Database Strategy" below)
@@ -11,7 +12,15 @@ A single-page application that lets a Telenor service agent schedule, manage, an
 - **MediatR** for request/response handling (vertical slice architecture)
 - **FluentValidation** for input validation
 - **xUnit + Moq** for unit tests, **WebApplicationFactory** for integration tests
-- Frontend: React + TypeScript *(planned — not yet implemented, see "Planned, Not Implemented")*
+
+**Frontend**
+- **Vue 3 + TypeScript** (Composition API, `<script setup>`)
+- **Vite** for tooling/dev server
+- **TanStack Vue Query** for server state, caching, and mutations
+- **VeeValidate + Zod** for form validation, mirroring the backend's validation rules
+- **Axios** for HTTP
+- **Vitest + Vue Testing Library** for component and schema tests
+- **Prettier** for consistent formatting
 
 ## Architecture
 
@@ -26,6 +35,12 @@ src/
 tests/
   UnitTests/          - Domain logic, handler logic (mocked repository), validators
   IntegrationTests/    - Full HTTP round-trips via WebApplicationFactory + in-memory SQLite
+client/
+  src/
+    api/              - Axios client and typed API call functions
+    components/        - AppointmentForm, AppointmentList, ImportButton
+    schemas/           - Zod validation schemas mirroring the backend's FluentValidation rules
+    types/             - TypeScript types matching the API's response shapes
 ```
 
 **Why vertical slices over a traditional layered architecture:** the domain here is small (appointment CRUD + conflict detection + import), so a full n-tier Clean Architecture would add ceremony without adding clarity. Organizing by feature means each of the three assignment requirements maps directly to a folder a reviewer can open and read end-to-end.
@@ -34,7 +49,7 @@ tests/
 
 ```mermaid
 flowchart TD
-    Client["Client<br/>(React + TypeScript — planned)"]
+    Client["Vue 3 + TypeScript Client"]
     ExternalApi["External Calendar API<br/>(mock endpoint)"]
     Endpoint["Minimal API Endpoint"]
     Validation["FluentValidation"]
@@ -53,7 +68,7 @@ flowchart TD
     DB -.->|"201 / 200 or 409 / 404 / 400"| Client
 ```
 
-Each request enters through a Minimal API endpoint, passes FluentValidation, is dispatched via MediatR to its handler, which runs domain conflict-checking logic before persisting through EF Core. Conflict detection sits between the handler and persistence deliberately — it can reject a request before anything is written to the database.
+Each request enters through a Minimal API endpoint, passes FluentValidation, is dispatched via MediatR to its handler, which runs domain conflict-checking logic before persisting through EF Core. Conflict detection sits between the handler and persistence deliberately — it can reject a request before anything is written to the database. The frontend mirrors this with a live pre-submit conflict check (`GET /check-conflict`) as the agent picks a time, in addition to the hard server-side check on actual submission.
 
 **Result pattern:** handlers that can fail in an expected way (e.g. conflict detected) return a `Result`-style object (`CreateAppointmentResult`, `UpdateAppointmentResult`) rather than throwing exceptions, since a scheduling conflict is expected business behavior, not an exceptional failure. Exceptions are reserved for genuinely unexpected conditions.
 
@@ -70,6 +85,18 @@ Each request enters through a Minimal API endpoint, passes FluentValidation, is 
 
 Full interactive documentation is available via Swagger at `/swagger` when running locally.
 
+## Frontend Features
+
+- **List view** with per-appointment detail (name, booked time, phone, email, notes), showing "—" for any empty optional field so every row has a consistent shape.
+- **Date-range filter** wired to the backend's `from`/`to` query parameters, with an inclusive end-of-day boundary on the "To" date.
+- **Create / Edit** via a single reusable form component, switching mode based on whether an appointment is passed in. Includes:
+  - Client-side validation (VeeValidate + Zod) mirroring the backend's rules, as a fast first check — the backend remains the source of truth and validates again regardless.
+  - A **live conflict check** as the agent fills in start/end times, calling `check-conflict` before submission so the warning appears before they click submit, not just after.
+  - Explicit handling of `409` (conflict) and `404` (appointment deleted elsewhere) responses on submit.
+- **Delete** with a native browser confirmation dialog before the request is sent.
+- **Import** button showing a result summary (imported / skipped-duplicate / skipped-conflict counts, plus human-readable conflict details).
+- Inputs are disabled while a create/update mutation is in flight, to prevent double-submission mid-save.
+
 ## Assumptions
 
 The assignment explicitly asks for documented assumptions where the spec is ambiguous. Here is every one made during development:
@@ -77,13 +104,14 @@ The assignment explicitly asks for documented assumptions where the spec is ambi
 - **Conflict boundary — touching edges are not a conflict.** If one appointment ends at exactly the moment another begins (e.g. 10:00–10:30 followed by 10:30–11:00), this is *not* treated as a conflict. Two appointments only conflict if their time ranges genuinely overlap (`Start < other.End && other.Start < End`).
 - **Customer representation.** A customer is represented as plain fields on the appointment itself (`CustomerName`, `CustomerPhone`, `CustomerEmail`) rather than a separate `Customer` entity/table. This was a deliberate simplification given the assignment scope — a real production system would likely have a proper customer aggregate.
 - **Time zones.** All appointment times are stored and transmitted as `DateTimeOffset`, not `DateTime`, so the offset is always explicit and unambiguous. Clients (frontend or API consumers) are responsible for sending the correct offset for their local time zone; the backend does not assume a fixed time zone. This was validated the hard way during testing: a test using `TimeSpan.Zero` (UTC) instead of matching the mock external event's `+02:00` offset silently produced a *different real-world instant* despite identical wall-clock digits, and the conflict it was meant to test never triggered. This is exactly the kind of bug `DateTimeOffset` is designed to prevent at the type level, but it doesn't prevent a human from constructing the wrong offset by hand.
-- **Date-range filtering semantics.** `GET /api/appointments?from=&to=` returns any appointment that *overlaps* the given window at all (not just ones that start inside it) — consistent with how conflict detection itself works.
-- **Appointment duration.** No fixed/default duration is enforced — the agent specifies both `start` and `end` explicitly for every appointment. `end` must be strictly after `start` (validated).
-- **Update conflict re-check.** When updating an appointment's time, the conflict check excludes the appointment's own current record (via `excludeId`), so an appointment doesn't spuriously conflict with itself.
+- **Date-range filtering semantics.** `GET /api/appointments?from=&to=` returns any appointment that *overlaps* the given window at all (not just ones that start inside it) — consistent with how conflict detection itself works. The frontend's "To" date filter treats the selected day as inclusive (end-of-day, `23:59:59.999`), not its literal midnight start, so appointments later that same day aren't silently excluded.
+- **Appointment duration.** No fixed/default duration is enforced — the agent specifies both `start` and `end` explicitly for every appointment. `end` must be strictly after `start` (validated on both client and server).
+- **Update conflict re-check.** When updating an appointment's time, the conflict check excludes the appointment's own current record (via `excludeId`), so an appointment doesn't spuriously conflict with itself. The frontend passes the same `excludeId` through its live conflict check while editing.
 - **Import de-duplication.** External events are matched by an `ExternalId` field. Re-running an import is idempotent — already-imported events are skipped, not duplicated. Two external events that conflict with *each other* within the same import batch: the first is imported, the second is skipped as a conflict (first-imported-wins).
 - **Import conflict handling.** If an external event's time conflicts with an existing appointment (or another event already imported earlier in the same batch), it is skipped, not force-imported. The import response reports counts of imported / skipped-duplicate / skipped-conflict plus human-readable conflict details, rather than failing the whole batch.
 - **Route/body id consistency on update.** `PUT /api/appointments/{id}` requires the id in the URL to match the id in the request body; a mismatch returns `400 Bad Request` rather than silently preferring one over the other.
 - **External calendar source.** Implemented against a simple mock endpoint (`GET /api/external/events`) built into this same API, standing in for the assignment's "simple test API" option. The import logic depends only on `IExternalCalendarClient`, an abstraction — swapping in a real provider (e.g. Google Calendar) requires only a new implementation of that interface and a one-line DI registration change; no changes to conflict-checking, deduplication, or the import handler itself.
+- **Frontend framework choice.** The job description this assignment was prepared for specifically names Vue3 as an example preferred framework, so Vue 3 + TypeScript was chosen over React/Angular (all three are explicitly permitted by the assignment) to match the target team's stack.
 
 ## Database Strategy
 
@@ -95,7 +123,6 @@ The assignment explicitly asks for documented assumptions where the spec is ambi
 
 The following are explicitly out of scope for this submission but are noted here per the assignment's guidance to document assumptions and reasoning:
 
-- **Frontend UI.** Not yet built. Planned as a React + TypeScript single-page application consuming this API.
 - **PostgreSQL + Docker Compose.** See "Database Strategy" above.
 - **Authentication/authorization.** No auth is implemented. In production, this would be JWT-based authentication scoped to service agents.
 - **Cloud deployment.** Not deployed. A production target would be AWS ECS Fargate (API) + RDS PostgreSQL (database).
@@ -103,25 +130,38 @@ The following are explicitly out of scope for this submission but are noted here
 
 ## Testing
 
-**58 automated tests** across two projects:
+**71 automated tests** across backend and frontend:
 
+**Backend (58)**
 - **Unit tests (37)** — `Domain` logic (`TimeRange`, `ConflictChecker`, including the back-to-back boundary case and invalid-range guard), every command/query handler (with `IAppointmentRepository` mocked via Moq), and FluentValidation validator rules (required fields, max length, invalid email, end-before-start).
 - **Integration tests (21)** — full HTTP round-trips via `WebApplicationFactory`, using a real (but in-memory) SQLite database that's freshly created per test run. Covers every endpoint's happy path plus its documented error paths (404, 409, 400), including import idempotency and conflict-skip behavior over real HTTP, and direct `AppointmentRepository` tests against a real `DbContext`.
 
-Run all tests:
+Run backend tests:
 ```bash
 dotnet test
+```
+
+**Frontend (13)**
+- **Schema tests (5)** — the Zod `createAppointmentSchema` (empty name, end-before-start, invalid email, valid data, empty optional fields).
+- **Component tests (8)** — `AppointmentForm` (validation error display, live conflict warning, edit-mode pre-fill), `AppointmentList` (delete confirmation accepted/cancelled, date-filter query params), `ImportButton` (result summary on success, error message on failure). API calls are mocked so no real network requests happen in tests.
+
+Run frontend tests:
+```bash
+cd client
+npm test -- --run
 ```
 
 **Deliberately not covered**, as a conscious time trade-off rather than an oversight:
 - Exhaustive input-format edge cases beyond what's listed above (e.g. every possible malformed date string variant)
 - Load/performance testing
 - Google Calendar API integration path (mock API was used instead — see Assumptions)
+- Frontend end-to-end (browser automation) tests — component tests plus the backend's comprehensive integration tests were judged to cover the important behavior without the added tooling overhead of a full E2E suite for this scope
 
 ## Running Locally
 
-Prerequisites: .NET 8 SDK.
+Prerequisites: .NET 8 SDK, Node.js (LTS).
 
+**Backend**
 ```bash
 # Restore and build
 dotnet restore
@@ -136,3 +176,12 @@ dotnet run
 ```
 
 API available at `http://localhost:<port>` (port printed on startup). Swagger UI at `/swagger`.
+
+**Frontend**
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Frontend available at `http://localhost:5173`. Requires the backend to be running (CORS is configured for `localhost:5173` and `localhost:3000`).

@@ -42,8 +42,11 @@ public class ImportAppointmentsHandlerTests
         var baseTime = new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero);
         var alreadyImported = new Appointment
         {
-            Id = Guid.NewGuid(), CustomerName = "Karin Berg",
-            Start = baseTime, End = baseTime.AddMinutes(30), ExternalId = "ext-001"
+            Id = Guid.NewGuid(),
+            CustomerName = "Karin Berg",
+            Start = baseTime,
+            End = baseTime.AddMinutes(30),
+            ExternalId = "ext-001"
         };
         var events = new List<ExternalCalendarEvent> { new("ext-001", "Karin Berg", baseTime, baseTime.AddMinutes(30), null) };
 

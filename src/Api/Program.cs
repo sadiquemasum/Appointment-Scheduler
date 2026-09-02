@@ -1,16 +1,16 @@
-using Application.Appointments.CreateAppointment;
-using Application.Appointments.GetAppointments;
-using Application.Appointments.UpdateAppointment;
-using Application.Appointments.DeleteAppointment;
 using Application.Appointments.CheckConflict;
+using Application.Appointments.CreateAppointment;
+using Application.Appointments.DeleteAppointment;
+using Application.Appointments.GetAppointments;
 using Application.Appointments.ImportAppointments;
+using Application.Appointments.UpdateAppointment;
 using Application.Common;
 using FluentValidation;
-using MediatR;
 using Infrastructure;
 using Infrastructure.ExternalServices;
-using Microsoft.EntityFrameworkCore;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
