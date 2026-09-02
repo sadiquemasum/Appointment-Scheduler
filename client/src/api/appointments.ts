@@ -41,3 +41,15 @@ export async function updateAppointment(payload: UpdateAppointmentPayload): Prom
 export async function deleteAppointment(id: string): Promise<void> {
   await apiClient.delete(`/api/appointments/${id}`);
 }
+
+export interface ImportResult {
+  imported: number;
+  skippedDuplicate: number;
+  skippedConflict: number;
+  conflictDetails: string[];
+}
+
+export async function importAppointments(): Promise<ImportResult> {
+  const response = await apiClient.post<ImportResult>('/api/appointments/import');
+  return response.data;
+}

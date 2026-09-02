@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import AppointmentList from './components/AppointmentList.vue';
 import AppointmentForm from './components/AppointmentForm.vue';
+import ImportButton from './components/ImportButton.vue';
 import type { Appointment } from './types/appointment';
 
 const editingAppointment = ref<Appointment | null>(null);
@@ -23,6 +24,7 @@ function onCancelled() {
   <main>
     <h1>Telenor Appointment Scheduler</h1>
     <AppointmentForm :appointment="editingAppointment" @saved="onSaved" @cancelled="onCancelled" />
+    <ImportButton />
     <AppointmentList @edit="onEdit" />
   </main>
 </template>
