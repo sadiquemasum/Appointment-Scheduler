@@ -57,4 +57,17 @@ public class UpdateAppointmentCommandValidatorTests
 
         Assert.True(result.IsValid);
     }
+
+    [Fact]
+    public void Validate_Fails_WhenCustomerNameExceedsMaxLength()
+    {
+        var command = new UpdateAppointmentCommand(
+            Guid.NewGuid(), new string('A', 201), null, null,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(30), null);
+
+        var result = _validator.Validate(command);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateAppointmentCommand.CustomerName));
+    }
 }

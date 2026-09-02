@@ -46,6 +46,11 @@ public class ImportAppointmentsEndpointTests : IDisposable
     [Fact]
     public async Task Post_ReportsSkippedConflict_WhenExternalEventOverlapsExistingAppointment()
     {
+        // The mock external API's "ext-003" event is defined at
+        // 2026-09-01T10:00:00+02:00 in Program.cs. Must use the same
+        // offset here, not TimeSpan.Zero (UTC) - same wall-clock digits
+        // but a different actual instant otherwise, which silently
+        // avoids the conflict this test is meant to trigger.
         var blocking = new Application.Appointments.CreateAppointment.CreateAppointmentCommand(
             "Jane Doe", null, null,
             new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.FromHours(2)),

@@ -92,4 +92,16 @@ public class ConflictCheckerTests
 
         Assert.Equal(2, result.Count);
     }
+
+    [Fact]
+    public void FindConflicts_Throws_WhenProposedEndIsBeforeOrEqualToStart()
+    {
+        var baseTime = new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.Zero);
+
+        Assert.Throws<ArgumentException>(() =>
+            _checker.FindConflicts(
+                existingAppointments: Enumerable.Empty<Appointment>(),
+                proposedStart: baseTime,
+                proposedEnd: baseTime.AddMinutes(-10)));
+    }
 }
