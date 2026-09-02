@@ -12,3 +12,19 @@ export async function createAppointment(payload: CreateAppointmentPayload): Prom
   const response = await apiClient.post<Appointment>('/api/appointments', payload);
   return response.data;
 }
+
+export interface ConflictCheckResult {
+  hasConflict: boolean;
+  conflicts: Array<{ id: string; customerName: string; start: string; end: string }>;
+}
+
+export async function checkConflict(
+  start: string,
+  end: string,
+  excludeId?: string
+): Promise<ConflictCheckResult> {
+  const response = await apiClient.get<ConflictCheckResult>('/api/appointments/check-conflict', {
+    params: { start, end, excludeId },
+  });
+  return response.data;
+}
