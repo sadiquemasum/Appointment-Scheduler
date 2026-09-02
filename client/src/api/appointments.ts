@@ -37,3 +37,7 @@ export async function updateAppointment(payload: UpdateAppointmentPayload): Prom
   const response = await apiClient.put<Appointment>(`/api/appointments/${payload.id}`, payload);
   return response.data;
 }
+
+export async function deleteAppointment(id: string): Promise<void> {
+  await apiClient.delete(`/api/appointments/${id}`);
+}

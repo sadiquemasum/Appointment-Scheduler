@@ -1,14 +1,32 @@
 <script setup lang="ts">
-import { useQuery } from '@tanstack/vue-query';
-import { getAppointments } from '../api/appointments';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import { getAppointments, deleteAppointment } from '../api/appointments';
 import type { Appointment } from '../types/appointment';
 
 const emit = defineEmits<{ edit: [appointment: Appointment] }>();
+
+const queryClient = useQueryClient();
 
 const { data: appointments, isLoading, isError, error } = useQuery({
   queryKey: ['appointments'],
   queryFn: () => getAppointments(),
 });
+
+const deleteMutation = useMutation({
+  mutationFn: deleteAppointment,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['appointments'] });
+  },
+});
+
+function onDelete(appointment: Appointment) {
+  const confirmed = window.confirm(
+    `Delete the appointment for ${appointment.customerName}? This cannot be undone.`
+  );
+  if (confirmed) {
+    deleteMutation.mutate(appointment.id);
+  }
+}
 </script>
 
 <template>
@@ -24,6 +42,9 @@ const { data: appointments, isLoading, isError, error } = useQuery({
         {{ new Date(appointment.start).toLocaleString() }} to
         {{ new Date(appointment.end).toLocaleTimeString() }}
         <button @click="emit('edit', appointment)">Edit</button>
+        <button @click="onDelete(appointment)" :disabled="deleteMutation.isPending.value">
+          Delete
+        </button>
       </li>
     </ul>
 
