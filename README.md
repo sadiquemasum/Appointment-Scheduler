@@ -7,7 +7,8 @@ A single-page application that lets a Telenor service agent schedule, manage, an
 **Backend**
 - **.NET 8** (ASP.NET Core Minimal API)
 - **C# 12** (nullable reference types enabled, primary constructors, records)
-- **SQLite** for local development, with a documented path to **PostgreSQL** for production (see "Database Strategy" below)
+- **SQLite** for local and Docker development, with a documented path to **PostgreSQL** for production (see "Database Strategy" below)
+- **Docker Compose** for containerized local runs (API + frontend; Postgres service defined but not yet enabled)
 - **EF Core 8** (Sqlite provider, swappable to Npgsql)
 - **MediatR** for request/response handling (vertical slice architecture)
 - **FluentValidation** for input validation
@@ -27,21 +28,24 @@ A single-page application that lets a Telenor service agent schedule, manage, an
 The backend follows a **vertical slice architecture**: each use case (Create, Update, Delete, List, Import, CheckConflict) is a self-contained folder under `src/Application/Appointments/`, containing its command/query, validator, and handler together, rather than being split across horizontal layers by technical concern.
 
 ```
-src/
-  Domain/            - Appointment entity, TimeRange value object, ConflictChecker (no external dependencies)
-  Application/        - MediatR commands/queries/handlers, validators, repository interfaces
-  Infrastructure/      - EF Core DbContext, repository implementation, external calendar client
-  Api/                - Minimal API endpoints, Program.cs, DI wiring
-tests/
-  UnitTests/          - Domain logic, handler logic (mocked repository), validators
-  IntegrationTests/    - Full HTTP round-trips via WebApplicationFactory + in-memory SQLite
-client/
-  src/
-    api/              - Axios client and typed API call functions
-    components/        - AppointmentForm, AppointmentList, ImportButton
-    schemas/           - Zod validation schemas mirroring the backend's FluentValidation rules
-    types/             - TypeScript types matching the API's response shapes
+Appointment-Scheduler/
+├── src/
+│   ├── Domain/            # Appointment entity, TimeRange value object, ConflictChecker (no external deps)
+│   ├── Application/       # MediatR commands/queries/handlers, validators, repository interfaces
+│   ├── Infrastructure/    # EF Core DbContext, repository implementation, external calendar client
+│   └── Api/               # Minimal API endpoints, Program.cs, DI wiring
+├── tests/
+│   ├── UnitTests/         # Domain logic, handler logic (mocked repository), validators
+│   └── IntegrationTests/  # Full HTTP round-trips via WebApplicationFactory + in-memory SQLite
+└── client/
+    └── src/
+        ├── api/           # Axios client and typed API call functions
+        ├── components/    # AppointmentForm, AppointmentList, ImportButton
+        ├── schemas/       # Zod validation schemas mirroring the backend's FluentValidation rules
+        └── types/         # TypeScript types matching the API's response shapes
 ```
+
+Dependencies in `src/` only ever point inward: `Api` depends on `Infrastructure`, which depends on `Application`, which depends on `Domain`. `Domain` itself has no dependencies.
 
 **Why vertical slices over a traditional layered architecture:** the domain here is small (appointment CRUD + conflict detection + import), so a full n-tier Clean Architecture would add ceremony without adding clarity. Organizing by feature means each of the three assignment requirements maps directly to a folder a reviewer can open and read end-to-end.
 
@@ -74,13 +78,27 @@ Each request enters through a Minimal API endpoint, passes FluentValidation, is 
 
 ## API Endpoints
 
+The API surface is organized into three categories, matching the three requirements the assignment asks for: **Core CRUD** for managing appointments directly, **Conflict Checking** as a standalone check the frontend can call before submitting, and **Import** for pulling appointments in from an external calendar source.
+
+**Core CRUD**
+
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/appointments` | List appointments, optional `?from=&to=` date-range filter |
-| `GET` | `/api/appointments/check-conflict` | Check if a proposed `start`/`end` (optional `excludeId`) conflicts with existing appointments, without creating anything |
 | `POST` | `/api/appointments` | Create an appointment. `201` on success, `409` with conflict details on collision |
 | `PUT` | `/api/appointments/{id}` | Update an appointment. `200` / `404` / `409` / `400` (route/body id mismatch) |
 | `DELETE` | `/api/appointments/{id}` | Delete an appointment. `204` / `404` |
+
+**Conflict Checking**
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/appointments/check-conflict` | Check if a proposed `start`/`end` (optional `excludeId`) conflicts with existing appointments, without creating anything |
+
+**Import**
+
+| Method | Path | Purpose |
+|---|---|---|
 | `POST` | `/api/appointments/import` | Import appointments from the external calendar source (see below) |
 
 Full interactive documentation is available via Swagger at `/swagger` when running locally.
@@ -115,15 +133,15 @@ The assignment explicitly asks for documented assumptions where the spec is ambi
 
 ## Database Strategy
 
-**Local development uses SQLite** (`appointments.db`, via EF Core migrations) for zero-friction setup — no external services required to run and test the application.
+**Both local (non-Docker) development and the Docker Compose setup use SQLite** — for local dev this is `appointments.db` in `src/Api`, and inside the `api` container it's a file in the `api-data` named volume. Migrations are applied automatically on startup in both cases, so no manual database setup step is required.
 
-**Production path: PostgreSQL via Docker Compose** *(planned — not yet implemented as of this submission)*. All EF Core queries were written to remain provider-agnostic (plain LINQ, no raw SQL, no SQLite-specific functions), so the swap from `UseSqlite` to `UseNpgsql` is intended to be a small, mechanical change. A Postgres-specific enhancement under consideration is an `EXCLUDE USING gist` constraint on the appointments table for database-level overlap prevention as defense-in-depth alongside the application-level `ConflictChecker` — this would be an optional/documented enhancement rather than a hard dependency, so the core logic doesn't rely on a Postgres-only feature.
+**Production path: PostgreSQL** *(planned — not yet implemented as of this submission)*. All EF Core queries were written to remain provider-agnostic (plain LINQ, no raw SQL, no SQLite-specific functions), so the swap from `UseSqlite` to `UseNpgsql` is intended to be a small, mechanical change. The `docker-compose.yml` already has a Postgres service defined and ready — it's commented out pending the provider swap. A Postgres-specific enhancement under consideration is an `EXCLUDE USING gist` constraint on the appointments table for database-level overlap prevention as defense-in-depth alongside the application-level `ConflictChecker` — this would be an optional/documented enhancement rather than a hard dependency, so the core logic doesn't rely on a Postgres-only feature.
 
 ## Planned, Not Implemented
 
 The following are explicitly out of scope for this submission but are noted here per the assignment's guidance to document assumptions and reasoning:
 
-- **PostgreSQL + Docker Compose.** See "Database Strategy" above.
+- **PostgreSQL provider swap.** See "Database Strategy" above — Docker Compose itself is implemented and working (API + frontend containers); only the Postgres provider and its compose service remain to be wired in.
 - **Authentication/authorization.** No auth is implemented. In production, this would be JWT-based authentication scoped to service agents.
 - **Cloud deployment.** Not deployed. A production target would be AWS ECS Fargate (API) + RDS PostgreSQL (database).
 - **Google Calendar API integration.** A mock external API was used instead to demonstrate the import flow (see Assumptions); the abstraction is designed so a real provider can be substituted without touching business logic.
@@ -157,7 +175,31 @@ npm test -- --run
 - Google Calendar API integration path (mock API was used instead — see Assumptions)
 - Frontend end-to-end (browser automation) tests — component tests plus the backend's comprehensive integration tests were judged to cover the important behavior without the added tooling overhead of a full E2E suite for this scope
 
-## Running Locally
+## Running with Docker
+
+Tested with **Docker 29.7.2** and **Docker Compose v5.5.0** (any reasonably recent Docker install with Compose v2+ should work).
+
+From the project root:
+```bash
+docker compose up --build
+```
+
+This builds and starts two containers:
+- **`api`** — the .NET 8 backend, published and run in a slim `aspnet:8.0` runtime image, listening on `http://localhost:8080`. Database migrations are applied automatically on startup, and the SQLite file persists in a named Docker volume (`api-data`) so data survives container restarts.
+- **`client`** — the Vue 3 frontend, built with Vite and served via nginx, available at `http://localhost:8081`.
+
+Open `http://localhost:8081` in your browser once both containers report as started — the frontend is pre-configured (via a build-time `VITE_API_BASE_URL`) to talk to the containerized API automatically.
+
+To stop the containers (data persists in the volume for next time):
+```bash
+docker compose down
+```
+
+Swagger is not exposed by default in the container (it's gated behind the Development environment, same as any typical production setup) — the API itself is reachable directly for testing, e.g. `curl http://localhost:8080/api/appointments`.
+
+**PostgreSQL is not yet wired into this Compose file** — see "Database Strategy" below. The service definition is present but commented out in `docker-compose.yml`, ready to enable once the Npgsql provider swap is done.
+
+## Running Locally (without Docker)
 
 Prerequisites: .NET 8 SDK, Node.js (LTS).
 
@@ -167,13 +209,12 @@ Prerequisites: .NET 8 SDK, Node.js (LTS).
 dotnet restore
 dotnet build
 
-# Apply database migrations (creates appointments.db)
-dotnet ef database update --project src/Infrastructure --startup-project src/Api
-
-# Run the API
+# Run the API - database migrations are applied automatically on startup
 cd src/Api
 dotnet run
 ```
+
+(If you'd rather apply migrations explicitly before running, that's also still available: `dotnet ef database update --project src/Infrastructure --startup-project src/Api`.)
 
 API available at `http://localhost:<port>` (port printed on startup). Swagger UI at `/swagger`.
 
@@ -184,4 +225,6 @@ npm install
 npm run dev
 ```
 
-Frontend available at `http://localhost:5173`. Requires the backend to be running (CORS is configured for `localhost:5173` and `localhost:3000`).
+Frontend available at `http://localhost:5173`. Requires the backend to be running (CORS is configured for `localhost:5173`, `localhost:3000`, and the Docker frontend's `localhost:8081`).
+
+Note: the local (non-Docker) run and the Docker run use separate SQLite database files, so data created in one won't appear in the other.
