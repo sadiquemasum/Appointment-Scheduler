@@ -54,13 +54,13 @@ Dependencies in `src/` only ever point inward: `Api` depends on `Infrastructure`
 ```mermaid
 flowchart TD
     Client["Vue 3 + TypeScript Client"]
-    ExternalApi["External Calendar API<br/>(mock endpoint)"]
+    ExternalApi["External Calendar API - mock endpoint"]
     Endpoint["Minimal API Endpoint"]
     Validation["FluentValidation"]
     Handler["MediatR Handler"]
-    Domain["Domain Logic<br/>(ConflictChecker, TimeRange)"]
-    Repo["AppointmentRepository<br/>(EF Core)"]
-    DB[("SQLite<br/>(Postgres planned)")]
+    Domain["Domain Logic - ConflictChecker, TimeRange"]
+    Repo["AppointmentRepository - EF Core"]
+    DB["SQLite - Postgres planned"]
 
     Client -->|"HTTP / JSON"| Endpoint
     ExternalApi -->|"Import"| Endpoint
@@ -69,7 +69,7 @@ flowchart TD
     Handler --> Domain
     Domain --> Repo
     Repo --> DB
-    DB -.->|"201 / 200 or 409 / 404 / 400"| Client
+    DB -.->|"Response: success or error"| Client
 ```
 
 Each request enters through a Minimal API endpoint, passes FluentValidation, is dispatched via MediatR to its handler, which runs domain conflict-checking logic before persisting through EF Core. Conflict detection sits between the handler and persistence deliberately — it can reject a request before anything is written to the database. The frontend mirrors this with a live pre-submit conflict check (`GET /check-conflict`) as the agent picks a time, in addition to the hard server-side check on actual submission.
